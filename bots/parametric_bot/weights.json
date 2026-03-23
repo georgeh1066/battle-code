@@ -1,0 +1,9 @@
+{
+  "spawn_ore_weight": 34.95296056017346,
+  "spawn_proximity_weight": 27.45407805682645,
+  "spawn_congestion_penalty": -0.6225658446101665,
+  "builder_early_game_cap": 2,
+  "builder_mid_game_cap": 7,
+  "reserve_titanium": 28,
+  "ore_repulsion_weight": 3.7438420636498466
+}

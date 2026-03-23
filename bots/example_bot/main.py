@@ -7,35 +7,44 @@ The engine calls `run(c)` each round for each unit controlled by this
 bot. Keep per-round work small to stay within the 2ms limit.
 """
 
-from typing import List
+import random
 
+from cambc import Controller, Direction, EntityType, Environment, Position
 
-def run(c):
-    """Entry point called each round with controller `c`.
+# non-centre directions
+DIRECTIONS = [d for d in Direction if d != Direction.CENTRE]
 
-    `c` exposes the Controller API (see docs). This template shows basic
-    patterns: iterating nearby entities, placing a marker, and a simple
-    cooldown-aware action.
-    """
+class Player:
+    def __init__(self):
+        self.num_spawned = 0 # number of builder bots spawned so far (core)
 
-    # Example: iterate nearby entities and log harvesters
-    try:
-        for eid in c.get_nearby_entities():
-            if c.get_entity_type(eid) == c.EntityType.HARVESTER:
-                pos = c.get_position(eid)
-                print(f"Saw harvester {eid} at {pos}")
+    def run(self, ct: Controller) -> None:
+        etype = ct.get_entity_type()
+        if etype == EntityType.CORE:
+            if self.num_spawned < 3:
+                # if we haven't spawned 3 builder bots yet, try to spawn one on a random tile
+                spawn_pos = ct.get_position().add(random.choice(DIRECTIONS))
+                if ct.can_spawn(spawn_pos):
+                    ct.spawn_builder(spawn_pos)
+                    self.num_spawned += 1
+        elif etype == EntityType.BUILDER_BOT:
+            # if we are adjacent to an ore tile, build a harvester on it
+            for d in Direction:
+                check_pos = ct.get_position().add(d)
+                if ct.can_build_harvester(check_pos):
+                    ct.build_harvester(check_pos)
+                    break
+            
+            # move in a random direction
+            move_dir = random.choice(DIRECTIONS)
+            move_pos = ct.get_position().add(move_dir)
+            # we need to place a conveyor or road to stand on, before we can move onto a tile
+            if ct.can_build_road(move_pos):
+                ct.build_road(move_pos)
+            if ct.can_move(move_dir):
+                ct.move(move_dir)
 
-        # Example: place a marker at unit position (pseudo-code)
-        my_pos = c.get_position(c.get_my_id())
-        # Marker payloads and API vary; replace with actual call:
-        # c.place_marker(my_pos, some_marker_value)
-
-    except Exception as e:
-        # Keep exceptions from crashing the agent process.
-        # stderr is useful for local debugging.
-        import sys
-        print("Error in run:", e, file=sys.stderr)
-
-
-if __name__ == "__main__":
-    print("This file is a bot template. Run it via the Battlecode runner.")
+            # place a marker on an adjacent tile with the current round number
+            marker_pos = ct.get_position().add(random.choice(DIRECTIONS))
+            if ct.can_place_marker(marker_pos):
+                ct.place_marker(marker_pos, ct.get_current_round())
